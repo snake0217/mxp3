@@ -7,7 +7,8 @@ import '../login_screen.dart';
 import '../constants.dart'; 
 import 'player_screen.dart';
 import '../mini_player.dart';
-
+import 'album_detail_screen.dart';
+import 'search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -164,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   backgroundColor: darkSurface,
                   selectedItemColor: mxp3AccentColor,
                   unselectedItemColor: Colors.grey,
-                  currentIndex: _selectedMenuIndex > 2 ? 0 : _selectedMenuIndex,
+                  currentIndex: _selectedMenuIndex > 3 ? 0 : _selectedMenuIndex, // Actualizado para 4 pestañas
                   type: BottomNavigationBarType.fixed,
                   onTap: (index) {
                     setState(() {
@@ -174,6 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   items: const [
                     BottomNavigationBarItem(icon: FaIcon(FontAwesomeIcons.house, size: 18), label: 'Escuchar'),
                     BottomNavigationBarItem(icon: FaIcon(FontAwesomeIcons.compass, size: 18), label: 'Explorar'),
+                    BottomNavigationBarItem(icon: FaIcon(FontAwesomeIcons.magnifyingGlass, size: 18), label: 'Buscar'),
                     BottomNavigationBarItem(icon: FaIcon(FontAwesomeIcons.towerBroadcast, size: 18), label: 'Radio'),
                   ],
                 ),
@@ -202,16 +204,17 @@ class _HomeScreenState extends State<HomeScreen> {
           
           _buildSidebarItem(icon: const FaIcon(FontAwesomeIcons.house), label: 'Escuchar', index: 0),
           _buildSidebarItem(icon: const FaIcon(FontAwesomeIcons.compass), label: 'Explorar', index: 1),
-          _buildSidebarItem(icon: const FaIcon(FontAwesomeIcons.towerBroadcast), label: 'Radio', index: 2),
+          _buildSidebarItem(icon: const FaIcon(FontAwesomeIcons.magnifyingGlass), label: 'Buscar', index: 2),
+          _buildSidebarItem(icon: const FaIcon(FontAwesomeIcons.towerBroadcast), label: 'Radio', index: 3),
           
           const SizedBox(height: 24),
           const Text('BIBLIOTECA', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
           const SizedBox(height: 12),
           
-          _buildSidebarItem(icon: const FaIcon(FontAwesomeIcons.clock), label: 'Reciente', index: 3),
-          _buildSidebarItem(icon: const FaIcon(FontAwesomeIcons.microphone), label: 'Artistas', index: 4),
-          _buildSidebarItem(icon: const FaIcon(FontAwesomeIcons.compactDisc), label: 'Álbumes', index: 5),
-          _buildSidebarItem(icon: const FaIcon(FontAwesomeIcons.heart), label: 'Favoritos', index: 6),
+          _buildSidebarItem(icon: const FaIcon(FontAwesomeIcons.clock), label: 'Reciente', index: 4),
+          _buildSidebarItem(icon: const FaIcon(FontAwesomeIcons.microphone), label: 'Artistas', index: 5),
+          _buildSidebarItem(icon: const FaIcon(FontAwesomeIcons.compactDisc), label: 'Álbumes', index: 6),
+          _buildSidebarItem(icon: const FaIcon(FontAwesomeIcons.heart), label: 'Favoritos', index: 7),
           
           const Spacer(),
           
@@ -455,9 +458,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       );
-    } else if (_selectedMenuIndex == 5) {
+    } else if (_selectedMenuIndex == 2) {
       // ----------------------------------------------------
-      // PESTAÑA 5: ÁLBUMES (Solo vista de álbumes)
+      // PESTAÑA 2: BUSCADOR
+      // ----------------------------------------------------
+      return const SearchScreen();
+      
+    } else if (_selectedMenuIndex == 6) {
+      // ----------------------------------------------------
+      // PESTAÑA 6: ÁLBUMES (Solo vista de álbumes)
       // ----------------------------------------------------
       return SingleChildScrollView(
         padding: contentPadding,
@@ -500,25 +509,53 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildMusicCard({required String albumId, required String title, required String subtitle, required String imageUrl, String? initialTrackId}) {
     return InkWell(
       onTap: () {
-        Navigator.push(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => PlayerScreen(
-              albumId: albumId,
-              albumTitle: title,
-              artistName: subtitle,
-              coverUrl: imageUrl,
-              initialTrackId: initialTrackId, // Lo enviamos a tu pantalla del reproductor
+        if (initialTrackId == null) {
+          // === CASO ÁLBUM ===
+          // Si no tiene track_id inicial, abrimos la pantalla del listado de canciones
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) => AlbumDetailScreen(
+                albumId: albumId,
+                albumTitle: title,
+                artistName: subtitle,
+                coverUrl: imageUrl,
+              ),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                const begin = Offset(0.0, 0.05);
+                const end = Offset.zero;
+                const curve = Curves.easeOut;
+                var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(position: animation.drive(tween), child: child),
+                );
+              },
             ),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              const begin = Offset(0.0, 1.0); // Deslizar desde abajo
-              const end = Offset.zero;
-              const curve = Curves.ease;
-              var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-              return SlideTransition(position: animation.drive(tween), child: child);
-            },
-          ),
-        );
+          );
+        } else {
+          // === CASO CANCIÓN INDIVIDUAL ===
+          // Si se pulsa desde la pestaña directa de canciones, salta directo al reproductor
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) => PlayerScreen(
+                albumId: albumId,
+                albumTitle: title,
+                artistName: subtitle,
+                coverUrl: imageUrl,
+                initialTrackId: initialTrackId,
+              ),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                const begin = Offset(0.0, 1.0);
+                const end = Offset.zero;
+                const curve = Curves.ease;
+                var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                return SlideTransition(position: animation.drive(tween), child: child);
+              },
+            ),
+          );
+        }
       },
       borderRadius: BorderRadius.circular(10),
       child: Container(

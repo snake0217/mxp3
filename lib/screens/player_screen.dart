@@ -50,6 +50,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   late Animation<double> _rotationAnimation;
   late Animation<Offset> _moveAnimation1;
   late Animation<Offset> _moveAnimation2;
+  late Animation<Offset> _moveAnimation3;
+  late Animation<Offset> _moveAnimation4;
+  late Animation<Offset> _moveAnimation5;
 
   @override
   void initState() {
@@ -58,12 +61,15 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     _fetchAndPlayTrack();
     _updatePalette(); 
 
-    _fastRotationController = AnimationController(vsync: this, duration: const Duration(seconds: 7))..repeat(); 
+    _fastRotationController = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat(); 
     _rotationAnimation = Tween<double>(begin: 0.0, end: 2 * 3.14159).animate(_fastRotationController);
 
-    _movementController = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat(reverse: true); 
+    _movementController = AnimationController(vsync: this, duration: const Duration(seconds: 6))..repeat(reverse: true); 
     _moveAnimation1 = Tween<Offset>(begin: const Offset(-0.2, -0.2), end: const Offset(0.2, 0.1)).animate(CurvedAnimation(parent: _movementController, curve: Curves.easeInOut));
     _moveAnimation2 = Tween<Offset>(begin: const Offset(0.1, 0.2), end: const Offset(-0.1, -0.2)).animate(CurvedAnimation(parent: _movementController, curve: Curves.easeInOut));
+    _moveAnimation3 = Tween<Offset>(begin: const Offset(0.3, -0.1), end: const Offset(-0.2, 0.3)).animate(CurvedAnimation(parent: _movementController, curve: Curves.easeInOutSine));
+    _moveAnimation4 = Tween<Offset>(begin: const Offset(-0.3, 0.3), end: const Offset(0.2, -0.2)).animate(CurvedAnimation(parent: _movementController, curve: Curves.easeInOutCubic));
+    _moveAnimation5 = Tween<Offset>(begin: const Offset(0.0, -0.4), end: const Offset(0.0, 0.4)).animate(CurvedAnimation(parent: _movementController, curve: Curves.easeInOut));
   }
 
   Future<void> _updatePalette() async {
@@ -179,13 +185,19 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
   Widget _buildIntenseLavaLamp() {
     return ImageFiltered(
-      imageFilter: ImageFilter.blur(sigmaX: 70, sigmaY: 70, tileMode: TileMode.mirror),
+      imageFilter: ImageFilter.blur(sigmaX: 90, sigmaY: 90, tileMode: TileMode.mirror),
       child: Stack(
         children: [
+          // Capa base original
           Positioned(top: -120, left: -120, child: RotationTransition(turns: _rotationAnimation, child: Container(width: 450, height: 450, decoration: BoxDecoration(shape: BoxShape.circle, color: _color1.withOpacity(0.8))))),
           Positioned(bottom: -80, right: -80, child: RotationTransition(turns: ReverseAnimation(_rotationAnimation), child: Container(width: 400, height: 400, decoration: BoxDecoration(shape: BoxShape.circle, color: _color2.withOpacity(0.7))))),
           Positioned(top: MediaQuery.of(context).size.height * 0.3, left: MediaQuery.of(context).size.width * 0.1, child: SlideTransition(position: _moveAnimation1, child: Container(width: 300, height: 300, decoration: BoxDecoration(shape: BoxShape.circle, color: _color3.withOpacity(0.6))))),
           Positioned(bottom: MediaQuery.of(context).size.height * 0.2, right: MediaQuery.of(context).size.width * 0.1, child: SlideTransition(position: _moveAnimation2, child: Container(width: 280, height: 280, decoration: BoxDecoration(shape: BoxShape.circle, color: _color4.withOpacity(0.5))))),
+          // Capa adicional de esferas (Más caótico)
+          Positioned(top: MediaQuery.of(context).size.height * 0.5, right: -50, child: SlideTransition(position: _moveAnimation3, child: Container(width: 350, height: 350, decoration: BoxDecoration(shape: BoxShape.circle, color: _color1.withOpacity(0.4))))),
+          Positioned(top: -50, right: MediaQuery.of(context).size.width * 0.3, child: SlideTransition(position: _moveAnimation4, child: Container(width: 220, height: 220, decoration: BoxDecoration(shape: BoxShape.circle, color: _color2.withOpacity(0.5))))),
+          Positioned(bottom: -50, left: MediaQuery.of(context).size.width * 0.2, child: SlideTransition(position: _moveAnimation5, child: Container(width: 260, height: 260, decoration: BoxDecoration(shape: BoxShape.circle, color: _color3.withOpacity(0.6))))),
+          Positioned(top: MediaQuery.of(context).size.height * 0.4, left: -100, child: RotationTransition(turns: ReverseAnimation(_rotationAnimation), child: Container(width: 380, height: 380, decoration: BoxDecoration(shape: BoxShape.circle, color: _color4.withOpacity(0.3))))),
         ],
       ),
     );

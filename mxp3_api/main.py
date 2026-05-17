@@ -199,6 +199,36 @@ async def get_album_tracks(album_id: str, current_user: dict = Depends(verify_jw
         cursor.close()
         conn.close()
 
+@app.get("/api/v1/search", status_code=status.HTTP_200_OK)
+async def search_tracks(q: str = "", current_user: dict = Depends(verify_jwt)):
+    if not q.strip():
+        return {"tracks": []}
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        search_term = f"%{q}%"
+        
+        query = """
+            SELECT t.track_id, t.title as track_title, t.duration_seconds, t.audio_file_url, t.track_number,
+                   a.album_id, a.title as album_title, a.cover_image_url,
+                   art.name as artist_name
+            FROM tracks t
+            JOIN albums a ON t.album_id = a.album_id
+            JOIN artists art ON a.artist_id = art.artist_id
+            WHERE t.title ILIKE %s OR a.title ILIKE %s OR art.name ILIKE %s
+            ORDER BY t.title ASC
+            LIMIT 30;
+        """
+        cursor.execute(query, (search_term, search_term, search_term))
+        return {"tracks": cursor.fetchall()}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error en la búsqueda")
+    finally:
+        cursor.close()
+        conn.close()
+
 @app.get("/api/v1/tracks")
 async def get_all_tracks(current_user: dict = Depends(verify_jwt)):
     conn = get_db_connection()
