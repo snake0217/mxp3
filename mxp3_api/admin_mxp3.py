@@ -223,20 +223,48 @@ class Mxp3AdminPanel:
             conn = self.get_db_connection()
             cur = conn.cursor()
 
-            cur.execute("INSERT INTO artists (name, profile_image_url) VALUES (%s, %s) ON CONFLICT DO NOTHING RETURNING artist_id;", (artist, final_img_url))
-            result = cur.fetchone()
-            artist_id = result[0] if result else cur.execute("SELECT artist_id FROM artists WHERE name = %s;", (artist,)) or cur.fetchone()[0]
+            # 1. BUSCAR O INSERTAR ARTISTA
+            cur.execute("SELECT artist_id FROM artists WHERE name = %s;", (artist,))
+            artist_row = cur.fetchone()
+            if artist_row:
+                artist_id = artist_row[0]
+            else:
+                cur.execute("INSERT INTO artists (name, profile_image_url) VALUES (%s, %s) RETURNING artist_id;", (artist, final_img_url))
+                artist_id = cur.fetchone()[0]
 
-            cur.execute("INSERT INTO albums (artist_id, title, album_type, cover_image_url) VALUES (%s, %s, 'single', %s) RETURNING album_id;", (artist_id, album, final_img_url))
-            album_id = cur.fetchone()[0]
+            # 2. INTELIGENTE: BUSCAR O INSERTAR ÁLBUM
+            # Buscamos si ya existe un álbum con ese nombre para ESE artista específico
+            cur.execute("SELECT album_id FROM albums WHERE artist_id = %s AND title = %s;", (artist_id, album))
+            album_row = cur.fetchone()
+            
+            if album_row:
+                album_id = album_row[0]
+                print(f"Álbum existente encontrado (ID: {album_id}). Añadiendo pista a este álbum.")
+            else:
+                # Si no existe, lo creamos como un 'album' propiamente
+                cur.execute("""
+                    INSERT INTO albums (artist_id, title, album_type, cover_image_url) 
+                    VALUES (%s, %s, 'album', %s) RETURNING album_id;
+                """, (artist_id, album, final_img_url))
+                album_id = cur.fetchone()[0]
+                print(f"Nuevo álbum creado (ID: {album_id}).")
 
-            cur.execute("INSERT INTO tracks (album_id, title, duration_seconds, audio_file_url, track_number) VALUES (%s, %s, %s, %s, 1);", (album_id, track, int(duration), final_audio_url))
+            # 3. CALCULAR EL NÚMERO DE PISTA AUTOMÁTICAMENTE
+            # Cuenta cuántas canciones tiene ya ese álbum y le suma 1
+            cur.execute("SELECT COALESCE(MAX(track_number), 0) + 1 FROM tracks WHERE album_id = %s;", (album_id,))
+            next_track_number = cur.fetchone()[0]
+
+            # 4. INSERTAR CANCIÓN CON SU NÚMERO DE PISTA REAL
+            cur.execute("""
+                INSERT INTO tracks (album_id, title, duration_seconds, audio_file_url, track_number) 
+                VALUES (%s, %s, %s, %s, %s);
+            """, (album_id, track, int(duration), final_audio_url, next_track_number))
 
             conn.commit()
             cur.close()
             conn.close()
             
-            messagebox.showinfo("Éxito", "Canción guardada.")
+            messagebox.showinfo("Éxito", f"¡Canción '{track}' guardada exitosamente como la pista #{next_track_number} del álbum '{album}'!")
             self.clear_form()
             self.load_data()
         except Exception as e:

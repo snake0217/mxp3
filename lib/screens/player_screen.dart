@@ -40,8 +40,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   bool _isDragging = false; 
   double _dragValue = 0.0;  
 
-  bool _isRepeat = false;
-  bool _isShuffle = false;
+
   bool _isFavorite = false;
 
   late AnimationController _fastRotationController;
@@ -89,19 +88,15 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         final tracks = data['tracks'] as List;
         
         if (tracks.isNotEmpty) {
-          final track = tracks[0];
-          
-          // Le pasamos la portada y el artista al servicio para que el MiniPlayer los pueda ver
-          track['cover_image_url'] = widget.coverUrl;
-          track['artist_name'] = widget.artistName;
-          track['album_id'] = widget.albumId; // <-- GUARDAMOS EL ID DEL ÁLBUM AQUÍ
-          track['album_title'] = widget.albumTitle; // <-- GUARDAMOS EL TÍTULO DEL ÁLBUM
-
-          // Solo descargamos y damos Play si es una canción diferente a la que ya estaba sonando
-          if (audioService.currentTrack?['track_id'] != track['track_id']) {
-            await audioService.playTrack(track);
+          // Ya no pasamos solo 1 canción, pasamos la lista (Cola) entera
+          if (audioService.currentTrack?['album_id'] != widget.albumId) {
+            await audioService.setQueueAndPlay(
+              tracks, 
+              0, // Empezamos en la pista 0
+              coverUrl: widget.coverUrl, 
+              artistName: widget.artistName
+            );
           }
-          
           if (mounted) setState(() => _isLoading = false);
         }
       } else {
@@ -271,8 +266,17 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            IconButton(icon: FaIcon(FontAwesomeIcons.shuffle, color: _isShuffle ? mxp3AccentColor : Colors.white70, size: 20), onPressed: () => setState(() => _isShuffle = !_isShuffle)),
-            IconButton(icon: const FaIcon(FontAwesomeIcons.backwardStep, color: Colors.white, size: 30), onPressed: () {}),
+            // Botón Aleatorio
+            IconButton(
+              icon: FaIcon(FontAwesomeIcons.shuffle, color: audioService.isShuffle ? mxp3AccentColor : Colors.white70, size: 20), 
+              onPressed: () => audioService.toggleShuffle(),
+            ),
+            // Botón Anterior
+            IconButton(
+              icon: const FaIcon(FontAwesomeIcons.backwardStep, color: Colors.white, size: 30), 
+              onPressed: () => audioService.playPrevious(),
+            ),
+            // Botón Play/Pausa
             Container(
               decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
               child: IconButton(
@@ -281,8 +285,16 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                 onPressed: () async { audioService.isPlaying ? await audioService.pause() : await audioService.resume(); },
               ),
             ),
-            IconButton(icon: const FaIcon(FontAwesomeIcons.forwardStep, color: Colors.white, size: 30), onPressed: () {}),
-            IconButton(icon: FaIcon(FontAwesomeIcons.repeat, color: _isRepeat ? mxp3AccentColor : Colors.white70, size: 20), onPressed: () => setState(() => _isRepeat = !_isRepeat)),
+            // Botón Siguiente
+            IconButton(
+              icon: const FaIcon(FontAwesomeIcons.forwardStep, color: Colors.white, size: 30), 
+              onPressed: () => audioService.playNext(),
+            ),
+            // Botón Repetir
+            IconButton(
+              icon: FaIcon(FontAwesomeIcons.repeat, color: audioService.isRepeat ? mxp3AccentColor : Colors.white70, size: 20), 
+              onPressed: () => audioService.toggleRepeat(),
+            ),
           ],
         ),
         const SizedBox(height: 20),

@@ -100,7 +100,7 @@ class MiniPlayer extends StatelessWidget {
                       children: [
                         IconButton(
                           icon: const FaIcon(FontAwesomeIcons.backwardStep, color: Colors.white, size: 20),
-                          onPressed: () {}, // TODO: Pista anterior
+                          onPressed: () => audioService.playPrevious(), // TODO: Pista anterior
                         ),
                         
                         // Botón de Play/Pausa envuelto en un círculo blanco
@@ -123,7 +123,7 @@ class MiniPlayer extends StatelessWidget {
 
                         IconButton(
                           icon: const FaIcon(FontAwesomeIcons.forwardStep, color: Colors.white, size: 20),
-                          onPressed: () {}, // TODO: Pista siguiente
+                          onPressed: () => audioService.playNext(), // TODO: Pista siguiente
                         ),
                       ],
                     ),
