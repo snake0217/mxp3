@@ -56,46 +56,31 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
+      // Hacemos petición a los Álbumes y a las Canciones al mismo tiempo
       final url = Uri.parse('${ApiConstants.baseUrl}/home-feed');
-      final response = await http.get(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': 'Bearer $token', // <-- AQUÍ ENVIAMOS EL TOKEN JWT
-        },
-      ).timeout(const Duration(seconds: 10));
+      final tracksUrl = Uri.parse('${ApiConstants.baseUrl}/tracks');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      final homeResponse = await http.get(url, headers: {'Authorization': 'Bearer $token'}).timeout(const Duration(seconds: 10));
+      final tracksResponse = await http.get(tracksUrl, headers: {'Authorization': 'Bearer $token'}).timeout(const Duration(seconds: 10));
+
+      if (homeResponse.statusCode == 200 && tracksResponse.statusCode == 200) {
+        final homeData = jsonDecode(homeResponse.body);
+        final tracksData = jsonDecode(tracksResponse.body);
+        
         setState(() {
-          _forYouList = data['for_you'] ?? [];
-          _recentList = data['recent'] ?? [];
+          _forYouList = homeData['for_you'] ?? [];
+          _recentList = homeData['recent'] ?? [];
+          _tracksList = tracksData['tracks'] ?? []; // Guardamos las canciones
           _isLoading = false;
         });
-      } else if (response.statusCode == 401) {
-        // Token expirado o inválido
+      } else if (homeResponse.statusCode == 401 || tracksResponse.statusCode == 401) {
         _logout(context);
       } else {
         setState(() {
-          _errorMessage = 'Error del servidor: ${response.statusCode}';
+          _errorMessage = 'Error del servidor';
           _isLoading = false;
         });
       }
-      final albumsUrl = Uri.parse('${ApiConstants.baseUrl}/albums');
-      final tracksUrl = Uri.parse('${ApiConstants.baseUrl}/tracks'); 
-      
-      final albumsRes = await http.get(albumsUrl, headers: {'Authorization': 'Bearer $token'});
-      final tracksRes = await http.get(tracksUrl, headers: {'Authorization': 'Bearer $token'});
-
-      if (albumsRes.statusCode == 200 && tracksRes.statusCode == 200) {
-        setState(() {
-          _albumsList = jsonDecode(albumsRes.body)['albums'];
-          _tracksList = jsonDecode(tracksRes.body)['tracks'];
-          _isLoading = false;
-        });
-      }
-
     } catch (e) {
       setState(() {
         _errorMessage = 'Error de conexión. Revisa tu red o el servidor.';
@@ -367,157 +352,152 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // 3. Mostrar el catálogo real
     int crossAxisCount = MediaQuery.of(context).size.width > 1200 ? 4 : (MediaQuery.of(context).size.width > 600 ? 2 : 1);
+    
+    // Creamos un espaciado responsivo que reduzca el margen excesivo en la parte superior
+    double horizontalPadding = MediaQuery.of(context).size.width > 600 ? 32.0 : 16.0;
+    EdgeInsets contentPadding = EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 16.0);
 
-    // Evaluamos en qué pestaña estamos para mostrar la lista correcta
-    switch (_selectedMenuIndex) {
-      case 0: // 0 = Pestaña 'Escuchar' (Canciones)
-        return _buildTracksView(crossAxisCount);
-      case 5: // 5 = Pestaña 'Álbumes'
-        return _buildAlbumsView(crossAxisCount);
-      default: // Para el resto de pestañas (Explorar, Reciente) mostramos el Home Feed
-        return _buildHomeFeedView(crossAxisCount);
+    // DEPENDIENDO DEL MENÚ SELECCIONADO, MOSTRAMOS UNA PANTALLA DISTINTA
+    if (_selectedMenuIndex == 0) {
+      // ----------------------------------------------------
+      // PESTAÑA 0: ESCUCHAR (Canciones Individuales)
+      // ----------------------------------------------------
+      return SingleChildScrollView(
+        padding: contentPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Canciones', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            if (_tracksList.isEmpty)
+              const Text('No hay canciones disponibles', style: TextStyle(color: Colors.grey))
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 20, mainAxisSpacing: 20, childAspectRatio: 0.75,
+                ),
+                itemCount: _tracksList.length,
+                itemBuilder: (context, index) {
+                  final track = _tracksList[index];
+                  return _buildMusicCard(
+                    albumId: track['album_id'],
+                    title: track['title'], // Muestra el nombre de la canción
+                    subtitle: track['artist_name'],
+                    imageUrl: track['cover_image_url'],
+                    initialTrackId: track['track_id'], // IMPORTANTE: Para que salte a esta pista exacta
+                  );
+                },
+              ),
+          ],
+        ),
+      );
+    } else if (_selectedMenuIndex == 1) {
+      // ----------------------------------------------------
+      // PESTAÑA 1: EXPLORAR (Feed Principal: Para Ti + Reciente)
+      // ----------------------------------------------------
+      return SingleChildScrollView(
+        padding: contentPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Para ti', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            if (_forYouList.isEmpty)
+              const Text('No hay recomendaciones disponibles', style: TextStyle(color: Colors.grey))
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 20, mainAxisSpacing: 20, childAspectRatio: 0.75,
+                ),
+                itemCount: _forYouList.length,
+                itemBuilder: (context, index) {
+                  final album = _forYouList[index];
+                  return _buildMusicCard(
+                    albumId: album['album_id'],
+                    title: album['title'], 
+                    subtitle: album['artist_name'],
+                    imageUrl: album['cover_image_url'],
+                  );
+                },
+              ),
+              
+            const SizedBox(height: 40),
+            const Text('Escuchado Recientemente', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            if (_recentList.isEmpty)
+              const Text('No has escuchado nada recientemente', style: TextStyle(color: Colors.grey))
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 20, mainAxisSpacing: 20, childAspectRatio: 0.75,
+                ),
+                itemCount: _recentList.length,
+                itemBuilder: (context, index) {
+                  final album = _recentList[index];
+                  return _buildMusicCard(
+                    albumId: album['album_id'],
+                    title: album['title'],
+                    subtitle: album['artist_name'],
+                    imageUrl: album['cover_image_url'],
+                  );
+                },
+              ),
+          ],
+        ),
+      );
+    } else if (_selectedMenuIndex == 5) {
+      // ----------------------------------------------------
+      // PESTAÑA 5: ÁLBUMES (Solo vista de álbumes)
+      // ----------------------------------------------------
+      return SingleChildScrollView(
+        padding: contentPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Tus Álbumes', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            if (_forYouList.isEmpty) // Usamos temporalmente _forYouList como base de álbumes
+              const Text('No hay álbumes disponibles', style: TextStyle(color: Colors.grey))
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 20, mainAxisSpacing: 20, childAspectRatio: 0.75,
+                ),
+                itemCount: _forYouList.length,
+                itemBuilder: (context, index) {
+                  final album = _forYouList[index];
+                  return _buildMusicCard(
+                    albumId: album['album_id'],
+                    title: album['title'], 
+                    subtitle: album['artist_name'],
+                    imageUrl: album['cover_image_url'],
+                  );
+                },
+              ),
+          ],
+        ),
+      );
+    } else {
+      // Otras pestañas (Radio, etc.)
+      return const Center(child: Text("Próximamente", style: TextStyle(color: Colors.white, fontSize: 24)));
     }
   }
 
-  // === VISTA DE CANCIONES (PESTAÑA ESCUCHAR) ===
-  Widget _buildTracksView(int crossAxisCount) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Escuchar Canciones', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 20),
-          if (_tracksList.isEmpty)
-            const Text('No hay canciones disponibles', style: TextStyle(color: Colors.grey))
-          else
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 20,
-                mainAxisSpacing: 20,
-                childAspectRatio: 0.75,
-              ),
-              itemCount: _tracksList.length,
-              itemBuilder: (context, index) {
-                final track = _tracksList[index];
-                return _buildMusicCard(
-                  albumId: track['album_id'],
-                  title: track['title'],
-                  albumTitle: track['album_title'], // Usamos el título del álbum si existe
-                  subtitle: track['artist_name'] ?? 'Artista',
-                  imageUrl: track['cover_image_url'],
-                  trackId: track['track_id'], // MAGIA: Le dice que salte a esta canción
-                );
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  // === VISTA DE ÁLBUMES (PESTAÑA ÁLBUMES) ===
-  Widget _buildAlbumsView(int crossAxisCount) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Tus Álbumes', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 20),
-          if (_albumsList.isEmpty)
-            const Text('No hay álbumes disponibles', style: TextStyle(color: Colors.grey))
-          else
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 20,
-                mainAxisSpacing: 20,
-                childAspectRatio: 0.75,
-              ),
-              itemCount: _albumsList.length,
-              itemBuilder: (context, index) {
-                final album = _albumsList[index];
-                return _buildMusicCard(
-                  albumId: album['album_id'],
-                  title: album['title'],
-                  subtitle: album['artist_name'] ?? 'Varios Artistas',
-                  imageUrl: album['cover_image_url'],
-                  // No mandamos initialTrackId, iniciará desde la pista 1
-                );
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  // === VISTA ORIGINAL DEL HOME (PARA TI / RECIENTE) ===
-  Widget _buildHomeFeedView(int crossAxisCount) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Para ti', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 20),
-          if (_forYouList.isEmpty)
-            const Text('No hay recomendaciones disponibles', style: TextStyle(color: Colors.grey))
-          else
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount, crossAxisSpacing: 20, mainAxisSpacing: 20, childAspectRatio: 0.75,
-              ),
-              itemCount: _forYouList.length,
-              itemBuilder: (context, index) {
-                final album = _forYouList[index];
-                return _buildMusicCard(
-                  albumId: album['album_id'], title: album['title'], subtitle: album['artist_name'], imageUrl: album['cover_image_url'],
-                );
-              },
-            ),
-          const SizedBox(height: 40),
-          const Text('Escuchado Recientemente', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 20),
-          if (_recentList.isEmpty)
-            const Text('No has escuchado nada recientemente', style: TextStyle(color: Colors.grey))
-          else
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount, crossAxisSpacing: 20, mainAxisSpacing: 20, childAspectRatio: 0.75,
-              ),
-              itemCount: _recentList.length,
-              itemBuilder: (context, index) {
-                final album = _recentList[index];
-                return _buildMusicCard(
-                  albumId: album['album_id'], title: album['title'], subtitle: album['artist_name'], imageUrl: album['cover_image_url'],
-                );
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
   // === TARJETA DE MÚSICA===
-  Widget _buildMusicCard({
-    required String albumId, 
-    required String title, 
-    required String subtitle, 
-    required String imageUrl,
-    String? albumTitle,
-    String? trackId,
-  }) {
+  Widget _buildMusicCard({required String albumId, required String title, required String subtitle, required String imageUrl, String? initialTrackId}) {
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -525,10 +505,10 @@ class _HomeScreenState extends State<HomeScreen> {
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) => PlayerScreen(
               albumId: albumId,
-              albumTitle: albumTitle ?? title,
+              albumTitle: title,
               artistName: subtitle,
               coverUrl: imageUrl,
-              initialTrackId: trackId, // ¡Se lo mandamos al PlayerScreen!
+              initialTrackId: initialTrackId, // Lo enviamos a tu pantalla del reproductor
             ),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               const begin = Offset(0.0, 1.0); // Deslizar desde abajo
