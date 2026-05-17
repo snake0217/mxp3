@@ -1,0 +1,49 @@
+# =========================
+# 1. FLUTTER / DART
+# =========================
+.dart_tool/
+.packages
+build/
+android/
+ios/
+linux/
+macos/
+windows/
+web/
+.flutter-plugins
+.flutter-plugins-dependencies
+# Evita subir los binarios generados al compilar la app
+*.apk
+*.aab
+
+# =========================
+# 2. PYTHON / BACKEND
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+# Entornos virtuales (nunca se suben)
+venv/
+env/
+.venv/
+# Variables de entorno (¡Crucial para no filtrar tu contraseña de PostgreSQL!)
+.env
+
+# =========================
+# 3. ARCHIVOS MULTIMEDIA / CACHÉ
+# =========================
+# Evita subir gigabytes de música e imágenes de portada a tu repositorio
+assets/*.gif
+mxp3_api/static/images/*.jpg
+mxp3_api/static/images/*.jpeg
+mxp3_api/static/images/*.png
+mxp3_api/static/audio/*.mp3
+mxp3_api/static/audio/*.wav
+
+# =========================
+# 4. EDITORES DE CÓDIGO Y SISTEMA OPERATIVO
+# =========================
+.vscode/
+.idea/
+*.iml
+.DS_Store
