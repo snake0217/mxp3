@@ -60,21 +60,25 @@ class _HomeScreenState extends State<HomeScreen> {
       // Hacemos petición a los Álbumes y a las Canciones al mismo tiempo
       final url = Uri.parse('${ApiConstants.baseUrl}/home-feed');
       final tracksUrl = Uri.parse('${ApiConstants.baseUrl}/tracks');
+      final artistsUrl = Uri.parse('${ApiConstants.baseUrl}/artists');
 
       final homeResponse = await http.get(url, headers: {'Authorization': 'Bearer $token'}).timeout(const Duration(seconds: 10));
       final tracksResponse = await http.get(tracksUrl, headers: {'Authorization': 'Bearer $token'}).timeout(const Duration(seconds: 10));
+      final artistsResponse = await http.get(artistsUrl, headers: {'Authorization': 'Bearer $token'}).timeout(const Duration(seconds: 10));
 
-      if (homeResponse.statusCode == 200 && tracksResponse.statusCode == 200) {
+      if (homeResponse.statusCode == 200 && tracksResponse.statusCode == 200 && artistsResponse.statusCode == 200) {
         final homeData = jsonDecode(homeResponse.body);
         final tracksData = jsonDecode(tracksResponse.body);
+        final artistsData = jsonDecode(artistsResponse.body);
         
         setState(() {
           _forYouList = homeData['for_you'] ?? [];
           _recentList = homeData['recent'] ?? [];
-          _tracksList = tracksData['tracks'] ?? []; // Guardamos las canciones
+          _tracksList = tracksData['tracks'] ?? [];
+          _artistsList = artistsData['artists'] ?? [];
           _isLoading = false;
         });
-      } else if (homeResponse.statusCode == 401 || tracksResponse.statusCode == 401) {
+      } else if (homeResponse.statusCode == 401 || tracksResponse.statusCode == 401 || artistsResponse.statusCode == 401) {
         _logout(context);
       } else {
         setState(() {
@@ -464,6 +468,76 @@ class _HomeScreenState extends State<HomeScreen> {
       // ----------------------------------------------------
       return const SearchScreen();
       
+    } else if (_selectedMenuIndex == 4) {
+      // ----------------------------------------------------
+      // PESTAÑA 4: RECIENTE
+      // ----------------------------------------------------
+      return SingleChildScrollView(
+        padding: contentPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Escuchado Recientemente', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            if (_recentList.isEmpty)
+              const Text('No has escuchado nada recientemente', style: TextStyle(color: Colors.grey))
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 20, mainAxisSpacing: 20, childAspectRatio: 0.75,
+                ),
+                itemCount: _recentList.length,
+                itemBuilder: (context, index) {
+                  final album = _recentList[index];
+                  return _buildMusicCard(
+                    albumId: album['album_id'],
+                    title: album['title'],
+                    subtitle: album['artist_name'],
+                    imageUrl: album['cover_image_url'],
+                  );
+                },
+              ),
+          ],
+        ),
+      );
+      
+    } else if (_selectedMenuIndex == 5) {
+      // ----------------------------------------------------
+      // PESTAÑA 5: ARTISTAS
+      // ----------------------------------------------------
+      return SingleChildScrollView(
+        padding: contentPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Tus Artistas', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            if (_artistsList.isEmpty)
+              const Text('No sigues a ningún artista', style: TextStyle(color: Colors.grey))
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 20, mainAxisSpacing: 20, childAspectRatio: 0.85, // Un poco más cuadrado para los artistas
+                ),
+                itemCount: _artistsList.length,
+                itemBuilder: (context, index) {
+                  final artist = _artistsList[index];
+                  return _buildArtistCard(
+                    name: artist['name'],
+                    imageUrl: artist['profile_image_url'],
+                  );
+                },
+              ),
+          ],
+        ),
+      );
+      
     } else if (_selectedMenuIndex == 6) {
       // ----------------------------------------------------
       // PESTAÑA 6: ÁLBUMES (Solo vista de álbumes)
@@ -584,6 +658,43 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
             const SizedBox(height: 4),
             Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // === TARJETA DE ARTISTA (Diseño Circular) ===
+  Widget _buildArtistCard({required String name, required String imageUrl}) {
+    return InkWell(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Perfil de artista próximamente')));
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: cardSurface, borderRadius: BorderRadius.circular(10)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
+              child: ClipOval(
+                child: Image.network(
+                  imageUrl,
+                  width: 130, height: 130, fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey.shade800,
+                      child: const Center(child: FaIcon(FontAwesomeIcons.microphone, color: Colors.grey, size: 40)),
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+            const SizedBox(height: 4),
+            const Text("Artista", style: TextStyle(color: Colors.grey, fontSize: 13)),
           ],
         ),
       ),

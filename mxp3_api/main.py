@@ -199,6 +199,23 @@ async def get_album_tracks(album_id: str, current_user: dict = Depends(verify_jw
         cursor.close()
         conn.close()
 
+@app.get("/api/v1/artists", status_code=status.HTTP_200_OK)
+async def get_all_artists(current_user: dict = Depends(verify_jwt)):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT artist_id, name, profile_image_url
+            FROM artists
+            ORDER BY name ASC;
+        """)
+        return {"artists": cursor.fetchall()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error al obtener artistas")
+    finally:
+        cursor.close()
+        conn.close()
+
 @app.get("/api/v1/search", status_code=status.HTTP_200_OK)
 async def search_tracks(q: str = "", current_user: dict = Depends(verify_jwt)):
     if not q.strip():
