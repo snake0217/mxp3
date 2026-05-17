@@ -198,3 +198,27 @@ async def get_album_tracks(album_id: str, current_user: dict = Depends(verify_jw
     finally:
         cursor.close()
         conn.close()
+
+@app.get("/api/v1/tracks")
+async def get_all_tracks(current_user: dict = Depends(verify_jwt)):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        
+        # JOIN mágico: Trae la canción, su álbum y su artista en una sola consulta
+        cursor.execute("""
+            SELECT t.track_id, t.title, t.duration_seconds, t.audio_file_url, t.track_number,
+                   a.album_id, a.title as album_title, a.cover_image_url,
+                   ar.name as artist_name
+            FROM tracks t
+            JOIN albums a ON t.album_id = a.album_id
+            JOIN artists ar ON a.artist_id = ar.artist_id
+            ORDER BY t.created_at DESC;
+        """)
+        tracks = cursor.fetchall()
+        return {"tracks": tracks}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()

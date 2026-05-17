@@ -15,6 +15,7 @@ class PlayerScreen extends StatefulWidget {
   final String albumTitle;
   final String artistName;
   final String coverUrl;
+  final String? initialTrackId;
 
   const PlayerScreen({
     Key? key,
@@ -22,6 +23,7 @@ class PlayerScreen extends StatefulWidget {
     required this.albumTitle,
     required this.artistName,
     required this.coverUrl,
+    this.initialTrackId,
   }) : super(key: key);
 
   @override
@@ -88,15 +90,26 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         final tracks = data['tracks'] as List;
         
         if (tracks.isNotEmpty) {
-          // Ya no pasamos solo 1 canción, pasamos la lista (Cola) entera
+          // Buscamos el índice de la canción que tocamos
+          int startIndex = 0;
+          if (widget.initialTrackId != null) {
+            startIndex = tracks.indexWhere((t) => t['track_id'] == widget.initialTrackId);
+            if (startIndex == -1) startIndex = 0;
+          }
+
+          // Si es un álbum nuevo, cargamos toda la cola y empezamos en el índice seleccionado
           if (audioService.currentTrack?['album_id'] != widget.albumId) {
             await audioService.setQueueAndPlay(
               tracks, 
-              0, // Empezamos en la pista 0
+              startIndex, // Ya no es siempre 0
               coverUrl: widget.coverUrl, 
               artistName: widget.artistName
             );
+          } else if (widget.initialTrackId != null && audioService.currentTrack?['track_id'] != widget.initialTrackId) {
+             // Si el álbum ya estaba sonando, pero tocaste otra canción de esa lista
+             await audioService.playFromQueue(startIndex);
           }
+          
           if (mounted) setState(() => _isLoading = false);
         }
       } else {
