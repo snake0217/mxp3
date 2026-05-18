@@ -359,7 +359,8 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    int crossAxisCount = MediaQuery.of(context).size.width > 1200 ? 4 : (MediaQuery.of(context).size.width > 600 ? 2 : 1);
+    // Cambiamos a 2 columnas para celular, 3 para tablets, 4 o 5 para pantallas grandes
+    int crossAxisCount = MediaQuery.of(context).size.width > 1200 ? 5 : (MediaQuery.of(context).size.width > 800 ? 4 : (MediaQuery.of(context).size.width > 600 ? 3 : 2));
     
     // Creamos un espaciado responsivo que reduzca el margen excesivo en la parte superior
     double horizontalPadding = MediaQuery.of(context).size.width > 600 ? 32.0 : 16.0;
@@ -581,6 +582,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // === TARJETA DE MÚSICA===
   Widget _buildMusicCard({required String albumId, required String title, required String subtitle, required String imageUrl, String? initialTrackId}) {
+    String safeImageUrl = ApiConstants.fixUrl(imageUrl);
     return InkWell(
       onTap: () {
         if (initialTrackId == null) {
@@ -642,7 +644,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
-                  imageUrl,
+                  safeImageUrl,
                   width: double.infinity,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
@@ -666,6 +668,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // === TARJETA DE ARTISTA (Diseño Circular) ===
   Widget _buildArtistCard({required String name, required String imageUrl}) {
+    String safeImageUrl = ApiConstants.fixUrl(imageUrl);
     return InkWell(
       onTap: () {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Perfil de artista próximamente')));
@@ -678,16 +681,23 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Expanded(
-              child: ClipOval(
-                child: Image.network(
-                  imageUrl,
-                  width: 130, height: 130, fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey.shade800,
-                      child: const Center(child: FaIcon(FontAwesomeIcons.microphone, color: Colors.grey, size: 40)),
-                    );
-                  },
+            child: Center(
+              child: AspectRatio(
+                aspectRatio: 1.0, // Asegura que siempre sea un círculo perfecto
+                child: ClipOval(
+                  child: Image.network(
+                    safeImageUrl,
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey.shade800,
+                        child: const Center(child: FaIcon(FontAwesomeIcons.microphone, color: Colors.grey, size: 40)),
+                      );
+                    },
+                  ),
+                ),
                 ),
               ),
             ),

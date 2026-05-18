@@ -73,7 +73,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   }
 
   Future<void> _updatePalette() async {
-    final PaletteGenerator paletteGenerator = await PaletteGenerator.fromImageProvider(NetworkImage(widget.coverUrl), size: const Size(100, 100));
+    String safeCoverUrl = ApiConstants.fixUrl(widget.coverUrl);
+    final PaletteGenerator paletteGenerator = await PaletteGenerator.fromImageProvider(NetworkImage(safeCoverUrl), size: const Size(100, 100));
     setState(() {
       _color1 = paletteGenerator.vibrantColor?.color ?? paletteGenerator.dominantColor?.color ?? const Color(0xFF121212);
       _color2 = paletteGenerator.lightVibrantColor?.color ?? paletteGenerator.mutedColor?.color ?? const Color(0xFF1C1C1C);
@@ -204,12 +205,14 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   }
 
   Widget _buildPlayerContent(double imageSize, AudioPlayerService audioService) {
+    String safeCoverUrl = ApiConstants.fixUrl(widget.coverUrl);
+    
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Image.network(widget.coverUrl, width: imageSize, height: imageSize, fit: BoxFit.cover),
+          child: Image.network(safeCoverUrl, width: imageSize, height: imageSize, fit: BoxFit.cover),
         ),
         const SizedBox(height: 40),
         Row(

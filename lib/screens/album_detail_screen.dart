@@ -47,8 +47,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
 
   // === MAGIA: Extraer colores de la portada ===
   Future<void> _updatePalette() async {
+    String safeCoverUrl = ApiConstants.fixUrl(widget.coverUrl);
     final PaletteGenerator paletteGenerator = await PaletteGenerator.fromImageProvider(
-      NetworkImage(widget.coverUrl),
+      NetworkImage(safeCoverUrl),
       size: const Size(100, 100), // Tamaño pequeño para rapidez
     );
     
@@ -87,6 +88,8 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     // Calculamos el ancho para diseño responsivo
     final screenWidth = MediaQuery.of(context).size.width;
     final bool isDesktop = screenWidth > 800;
+
+    String safeCoverUrl = ApiConstants.fixUrl(widget.coverUrl);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -152,10 +155,14 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Image.network(
-                            widget.coverUrl,
+                            safeCoverUrl,
                             width: isDesktop ? 300 : screenWidth * 0.65,
                             height: isDesktop ? 300 : screenWidth * 0.65,
                             fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: Colors.grey.shade900,
+                              child: const Icon(Icons.music_note, color: Colors.grey, size: 50),
+                            ),
                           ),
                         ),
                       ),

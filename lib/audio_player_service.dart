@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'dart:math';
+import 'constants.dart'; // Importante para arreglar las URLs dinámicamente
 
 class AudioPlayerService extends ChangeNotifier {
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -137,8 +138,8 @@ class AudioPlayerService extends ChangeNotifier {
       _currentTrack = track;
       notifyListeners();
       
-      String audioUrl = track['audio_file_url'];
-      var file = await DefaultCacheManager().getSingleFile(audioUrl);
+      String safeAudioUrl = ApiConstants.fixUrl(track['audio_file_url']);
+      var file = await DefaultCacheManager().getSingleFile(safeAudioUrl);
       _localAudioPath = file.path; 
 
       await _audioPlayer.play(DeviceFileSource(_localAudioPath!));

@@ -108,11 +108,12 @@ class _SearchScreenState extends State<SearchScreen> {
                         itemCount: _searchResults.length,
                         itemBuilder: (context, index) {
                           final track = _searchResults[index];
+                          final safeImageUrl = ApiConstants.fixUrl(track['cover_image_url']);
                           return ListTile(
                             contentPadding: const EdgeInsets.symmetric(vertical: 8),
                             leading: ClipRRect(
                               borderRadius: BorderRadius.circular(6),
-                              child: Image.network(track['cover_image_url'], width: 50, height: 50, fit: BoxFit.cover),
+                              child: Image.network(safeImageUrl, width: 50, height: 50, fit: BoxFit.cover),
                             ),
                             title: Text(track['track_title'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                             subtitle: Text(track['artist_name'] ?? '', style: const TextStyle(color: Colors.white54)),
@@ -122,7 +123,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               await audioService.setQueueAndPlay(
                                 _searchResults, 
                                 index, 
-                                coverUrl: track['cover_image_url'], 
+                                coverUrl: safeImageUrl, 
                                 artistName: track['artist_name']
                               );
                               Navigator.push(
@@ -132,7 +133,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                     albumId: track['album_id'],
                                     albumTitle: track['album_title'],
                                     artistName: track['artist_name'],
-                                    coverUrl: track['cover_image_url'],
+                                    coverUrl: safeImageUrl,
                                     initialTrackId: track['track_id'],
                                   ),
                                 ),

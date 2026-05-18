@@ -16,7 +16,7 @@ DB_CONFIG = {
 }
 
 LOCAL_STATIC_DIR = "mxp3_api/static" 
-BASE_URL = "http://192.168.1.201:8000/static"
+BASE_URL = "/static"
 # ==========================================
 
 class Mxp3AdminPanel:

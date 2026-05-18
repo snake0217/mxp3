@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'audio_player_service.dart';
 import 'screens/player_screen.dart'; 
+import 'constants.dart'; 
 
 class MiniPlayer extends StatelessWidget {
   const MiniPlayer({Key? key}) : super(key: key);
@@ -68,7 +69,7 @@ class MiniPlayer extends StatelessWidget {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: Image.network(
-                        audioService.currentTrack!['cover_image_url'],
+                        ApiConstants.fixUrl(audioService.currentTrack!['cover_image_url']), 
                         width: 44, height: 44, fit: BoxFit.cover,
                       ),
                     ),

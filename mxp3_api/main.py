@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import bcrypt
@@ -12,6 +13,15 @@ app = FastAPI(
     title="Mxp3 API - Microservicio de Usuarios",
     description="API para gestión de identidad y streaming",
     version="1.0.0"
+)
+
+# Agregar soporte para CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Montar la carpeta 'static' para servir imágenes y música públicamente
